@@ -57,3 +57,34 @@
 - name: MacOS - Update ca certificates
   command: /usr/local/opt/openssl/bin/c_rehash
   when: ansible_os_family == 'Darwin'
+
+- name: AIX - Create CA certs folder
+  file:
+    path: /var/ssl/certs/
+    state: directory
+    mode: 0755
+    owner: root
+    group: system
+    recurse: yes
+  when: ansible_os_family == 'AIX'
+
+- name: AIX - Retrieve test cacert
+  get_url:
+    url: "http://ansible.http.tests/cacert.pem"
+    dest: "/var/ssl/certs/ansible.crt"
+    mode: 0644
+  when: ansible_os_family == 'AIX'
+
+- name: AIX - calculate CA cert hash
+  command: /usr/bin/openssl x509 -hash -noout -in /var/ssl/certs/ansible.crt
+  register: openssl_cacert_x509_hash
+  when: ansible_os_family == 'AIX'
+
+- name: AIX - Update ca certificates
+  file:
+    state: link
+    src: ansible.crt
+    dest: /var/ssl/certs/{{ openssl_cacert_x509_hash.stdout }}.0
+    owner: root
+    group: system
+  when: ansible_os_family == 'AIX'
